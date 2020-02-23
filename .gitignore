@@ -1,0 +1,9 @@
+*.sc
+.bloop
+.metals
+target
+mainRunner
+project/target
+project/build.properties
+project/metals.sbt
+src/main/resources/
