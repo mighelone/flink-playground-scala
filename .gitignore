@@ -6,3 +6,4 @@ mainRunner
 project/target
 project/build.properties
 project/metals.sbt
+.idea
