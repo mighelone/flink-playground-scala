@@ -1,24 +1,31 @@
 package com.mvasce
 
-import org.apache.flink.streaming.api._
-import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
-import org.apache.flink.api.java.utils.ParameterTool
-import org.apache.flink.streaming.api.TimeCharacteristic
 import java.util.Properties
-import org.apache.kafka.clients.producer.ProducerConfig
-import org.apache.kafka.clients.consumer.ConsumerConfig
-import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer
 
 import com.mvasce.records.ClickEvent
+import com.mvasce.functions.CountingAggregator
+import org.apache.flink.api.java.utils.ParameterTool
+import org.apache.flink.streaming.api.TimeCharacteristic
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
+import org.apache.flink.streaming.api.functions.timestamps.BoundedOutOfOrdernessTimestampExtractor
+import org.apache.flink.streaming.api.windowing.time.Time
+import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer
+import org.apache.kafka.clients.consumer.ConsumerConfig
+import org.apache.kafka.clients.producer.ProducerConfig
+import java.util.concurrent.TimeUnit
+import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer
 
 object ClickEventCounter {
 
   val CHECKPOINTING_OPTION = "checkpointing"
   val ENVENTIME_OPTION = "event-time"
   val BACKPRESSURE_OPTION = "backpressure"
+  val WINDOW_SIZE = Time.seconds(15) // Time.of(15, TimeUnit.SECONDS)
+
 
   def main(args: Array[String]): Unit = {
     val params = ParameterTool.fromArgs(args)
+    val inflictBackpressure: Boolean = params.has(BACKPRESSURE_OPTION)
 
     val env = StreamExecutionEnvironment.getExecutionEnvironment()
 
@@ -31,14 +38,31 @@ object ClickEventCounter {
     kafkaProps.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, brokers)
     kafkaProps.setProperty(ConsumerConfig.GROUP_ID_CONFIG, "click-event-count")
 
-    val clicks = env.addSource(
-      new FlinkKafkaConsumer(
-        inputTopic,
-        new ClickEvent.ClickEventDeserializationSchema,
-        kafkaProps
+    val clicks = env
+      .addSource(
+        new FlinkKafkaConsumer(
+          inputTopic,
+          new ClickEvent.ClickEventDeserializationSchema,
+          kafkaProps
+        )
       )
-    )
-    clicks.print()
+      .name("ClickEvent source")
+      .assignTimestampsAndWatermarks(new BoundedOutOfOrdernessTimestampExtractor[ClickEvent](Time.seconds(200)) {
+        override def extractTimestamp(element: ClickEvent): Long = element.getMillis()
+      }) 
+
+    if (inflictBackpressure) {
+        println("Not implemented")
+    }
+
+    val statistics = clicks
+        .keyBy(_.page)
+        .timeWindow(WINDOW_SIZE)
+        .aggregate(new CountingAggregator)
+        // .name("ClickEventStatistics Sink")
+
+    statistics.print()
+    // statistics.addSink(new FlinkKafkaProducer[](outputTopic, ))
 
     env.execute("ClickEventCounter")
 

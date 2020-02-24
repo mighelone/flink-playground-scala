@@ -12,7 +12,9 @@ import org.apache.flink.api.java.typeutils.TypeExtractor
 case class ClickEvent(
     timestamp: DateTime,
     page: String
-)
+) {
+    def getMillis(): Long = timestamp.getMillis()
+}
 
 object ClickEvent {
     val pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSZ"
