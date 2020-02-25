@@ -23,6 +23,7 @@ import com.mvasce.records.ClickEvent
 import com.mvasce.functions.CountingAggregator
 import com.mvasce.functions.ClickEventStatisticCollector
 import com.mvasce.records.ClickEventStatistics
+import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer
 
 object ClickEventCounter {
 
@@ -74,6 +75,14 @@ object ClickEventCounter {
 
     val statistics: DataStream[ClickEventStatistics] = windowStream
       .aggregate(new CountingAggregator, new ClickEventStatisticCollector)
+
+    statistics.addSink(
+      new FlinkKafkaProducer(
+        outputTopic,
+        new ClickEventStatistics.ClickEventStatisticsSerializationSchema,
+        kafkaProps 
+        )
+    )
 
     statistics.print()
 

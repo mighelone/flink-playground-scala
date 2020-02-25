@@ -24,24 +24,10 @@ object ClickEventStatistics {
   )
   implicit val clickEventReader = Json.format[ClickEventStatistics]
 
-  class ClickEventStatisticsSerializationSchema(topic: String)
-      extends KafkaSerializationSchema[ClickEventStatistics] {
+  class ClickEventStatisticsSerializationSchema
+      extends SerializationSchema[ClickEventStatistics] {
+    override def serialize(element: ClickEventStatistics): Array[Byte] =
+      Json.toJson(element).toString().getBytes()
 
-    override def serialize(
-        element: ClickEventStatistics,
-        timestamp: java.lang.Long
-    ): ProducerRecord[Array[Byte], Array[Byte]] = {
-      new ProducerRecord(
-        topic,
-        Json.toJson(element).toString().getBytes()
-      )
-
-    }
   }
-//   class ClickEventStatisticsSerializationSchema
-//       extends SerializationSchema[ClickEventStatistics] {
-//     override def serialize(element: ClickEventStatistics): Array[Byte] =
-//       Json.toJson(element).toString().getBytes()
-
-//   }
 }
