@@ -43,7 +43,7 @@ object ClickEventCounter {
     kafkaProps.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, brokers)
     kafkaProps.setProperty(ConsumerConfig.GROUP_ID_CONFIG, "click-event-count")
 
-    val clicks = env
+    val clicks: DataStream[ClickEvent] = env
       .addSource(
         new FlinkKafkaConsumer(
           inputTopic,
@@ -65,11 +65,12 @@ object ClickEventCounter {
 //        println("Not implemented")
 //    }
 
-    val windowStream = clicks
+    val windowStream: WindowedStream[ClickEvent, String, TimeWindow] = clicks
       .keyBy((x: ClickEvent) => x.page)
       .timeWindow(WINDOW_SIZE)
 
-    val statistics: DataStream[Int] = windowStream.aggregate(new MyAggregator)
+    val statistics: DataStream[(String, Int)] = windowStream
+      .aggregate(new MyAggregator, new MyProcessor)
     // val statistics2: SingleOutputStreamOperator[(String, Int)] = windowStream.aggregate(new MyAggregator, new MyProcessor)
 //    val statistics2 =
 //        .aggregate(new MyAggregator, new MyKeySelector)
@@ -102,9 +103,9 @@ object ClickEventCounter {
   }
 
   class MyProcessor
-      extends ProcessWindowFunction[Int, (String, Int), String, TimeWindow] {
+      extends ProcessWindowFunction[Int,(String, Int), String, TimeWindow] {
     override def process(
-        key: (String),
+        key: String,
         context: Context,
         elements: Iterable[Int],
         out: Collector[(String, Int)]
