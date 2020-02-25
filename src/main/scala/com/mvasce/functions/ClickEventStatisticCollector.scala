@@ -33,11 +33,18 @@ import org.joda.time.Instant
 //  }
 //}
 
-class ClickEventStatisticCollector extends ProcessWindowFunction[Int, ClickEventStatistics, String, TimeWindow] {
-  override def process(key: String, context: Context, elements: Iterable[Int], out: Collector[ClickEventStatistics]): Unit = {
+class ClickEventStatisticCollector
+    extends ProcessWindowFunction[Int, ClickEventStatistics, String, TimeWindow] {
+  override def process(
+      key: String,
+      context: Context,
+      elements: Iterable[Int],
+      out: Collector[ClickEventStatistics]
+  ): Unit = {
     val count = elements.iterator.next()
     val start = Instant.ofEpochMilli(context.window.getStart).toDateTime
     val end = Instant.ofEpochMilli(context.window.getEnd).toDateTime
-    ClickEventStatistics(start, end, key, count)
+    val stat = ClickEventStatistics(start, end, key, count)
+    out.collect(stat)
   }
 }

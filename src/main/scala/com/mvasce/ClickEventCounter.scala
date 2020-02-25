@@ -21,13 +21,15 @@ import org.apache.kafka.clients.producer.ProducerConfig
 
 import com.mvasce.records.ClickEvent
 import com.mvasce.functions.CountingAggregator
+import com.mvasce.functions.ClickEventStatisticCollector
+import com.mvasce.records.ClickEventStatistics
 
 object ClickEventCounter {
 
   val CHECKPOINTING_OPTION = "checkpointing"
   val ENVENTIME_OPTION = "event-time"
   val BACKPRESSURE_OPTION = "backpressure"
-  val WINDOW_SIZE = Time.seconds(15) // Time.of(15, TimeUnit.SECONDS)
+  val WINDOW_SIZE = Time.seconds(10) // Time.of(15, TimeUnit.SECONDS)
 
   def main(args: Array[String]): Unit = {
     val params = ParameterTool.fromArgs(args)
@@ -70,8 +72,8 @@ object ClickEventCounter {
       .keyBy((x: ClickEvent) => x.page)
       .timeWindow(WINDOW_SIZE)
 
-    val statistics: DataStream[(String, Int)] = windowStream
-      .aggregate(new CountingAggregator, new MyProcessor)
+    val statistics: DataStream[ClickEventStatistics] = windowStream
+      .aggregate(new CountingAggregator, new ClickEventStatisticCollector)
 
     statistics.print()
 
@@ -79,25 +81,12 @@ object ClickEventCounter {
 
   }
 
-  class MyProcessor
-      extends ProcessWindowFunction[Int, (String, Int), String, TimeWindow] {
-    override def process(
-        key: String,
-        context: Context,
-        elements: Iterable[Int],
-        out: Collector[(String, Int)]
-    ): Unit = {
-      val accumulated: Int = elements.iterator.next()
-      out.collect((key, accumulated))
-    }
-  }
-
-  // class MyKeySelector extends KeySelector[ClickEvent, String] {
-  //   override def getKey(value: ClickEvent): String = {
-  //     value.page
-  //   }
-  // }
-
+  /**
+    * Configure Flink environment
+    *
+    * @param params CLI parameters
+    * @param env Flink Environment context
+    */
   def configureEnvironment(
       params: ParameterTool,
       env: StreamExecutionEnvironment
