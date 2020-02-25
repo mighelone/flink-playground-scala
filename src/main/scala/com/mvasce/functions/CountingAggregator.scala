@@ -3,14 +3,6 @@ package com.mvasce.functions
 import com.mvasce.records.ClickEvent
 import org.apache.flink.api.common.functions.AggregateFunction
 
-//class CountingAggregator extends AggregateFunction[ClickEvent,Long,Long] {
-//    override def createAccumulator(): Long = 0L
-//    override def add(value: ClickEvent, accumulator: Long): Long = {
-//        accumulator + 1
-//    }
-//    override def getResult(accumulator: Long): Long = accumulator
-//    override def merge(x: Long, y: Long): Long = x+y
-//}
 
 
 class CountingAggregator extends AggregateFunction[ClickEvent, Int, Int] {

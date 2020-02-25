@@ -20,6 +20,7 @@ import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.producer.ProducerConfig
 
 import com.mvasce.records.ClickEvent
+import com.mvasce.functions.CountingAggregator
 
 object ClickEventCounter {
 
@@ -61,30 +62,16 @@ object ClickEventCounter {
         }
       )
 
-//    if (inflictBackpressure) {
-//        println("Not implemented")
-//    }
+    if (inflictBackpressure) {
+      println("Not implemented")
+    }
 
     val windowStream: WindowedStream[ClickEvent, String, TimeWindow] = clicks
       .keyBy((x: ClickEvent) => x.page)
       .timeWindow(WINDOW_SIZE)
 
     val statistics: DataStream[(String, Int)] = windowStream
-      .aggregate(new MyAggregator, new MyProcessor)
-    // val statistics2: SingleOutputStreamOperator[(String, Int)] = windowStream.aggregate(new MyAggregator, new MyProcessor)
-//    val statistics2 =
-//        .aggregate(new MyAggregator, new MyKeySelector)
-
-//     val windowed =
-//       clicks.keyBy(new MyKeySelector)
-//       .timeWindow(WINDOW_SIZE)
-//       .aggregate(new MyAggregator(), new MyProcessor())
-//    val acc: TypeInformation[Int] = TypeExtractor.getForClass(classOf[Int])
-//    val res: TypeInformation[(String, Int)] = TypeExtractor.getForClass(classOf[(String, Int)])
-//    val statistics: SingleOutputStreamOperator[Int] = windowed.aggregate(new MyAggregator)
-//    val statistics = windowed.aggregate(new MyAggregator, new MyProcessor)
-
-//       .aggregate(new MyAggregator, new MyProcessor)
+      .aggregate(new CountingAggregator, new MyProcessor)
 
     statistics.print()
 
@@ -92,18 +79,8 @@ object ClickEventCounter {
 
   }
 
-  class MyAggregator extends AggregateFunction[ClickEvent, Int, Int] {
-    override def createAccumulator(): Int = 0
-
-    override def add(value: ClickEvent, accumulator: Int): Int = accumulator + 1
-
-    override def getResult(accumulator: Int): Int = accumulator
-
-    override def merge(a: Int, b: Int): Int = a + b
-  }
-
   class MyProcessor
-      extends ProcessWindowFunction[Int,(String, Int), String, TimeWindow] {
+      extends ProcessWindowFunction[Int, (String, Int), String, TimeWindow] {
     override def process(
         key: String,
         context: Context,
